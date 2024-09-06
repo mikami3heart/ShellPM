@@ -1,0 +1,10 @@
+BUILD_*
+BUILD
+
+# Mac
+.DS_Store
+
+# editor buffer
+*.swp
+*.*~
+

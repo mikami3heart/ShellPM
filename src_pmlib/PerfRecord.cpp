@@ -6,6 +6,7 @@
 #include "power_obj_menu.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <cerrno>
 
 
 namespace pm_lib {
@@ -24,25 +25,29 @@ namespace pm_lib {
 
 	int iret = mkdir(dir_name.c_str(), 0700);
 
-	// Note:
-	// The argument to mkdir() must be a full path name, i.e. ~ does not work
-	// The argument to system("mkdir .. ") can contain shell variables.
-
-	//	int iret = mkdir(argument, 0700);
-		//	mkdir("~/.shellpm/measured_data", 0700);				// NG
-		//	mkdir("${HOME}/.shellpm/measured_data", 0700);			// NG
-		//	mkdir("/Users/mikami/.shellpm/measured_data", 0700);	// OK!
-
+	//	std::string mkdir_command = "mkdir -p " + dir_name;
 	//	int iret = system(mkdir_command.c_str() );
-		//	std::string mkdir_command = "mkdir -p ${HOME}/xyz123";	// OK!
-		//	std::string mkdir_command = "mkdir -p ~/xyz123";	// OK!
-		//	std::string mkdir_command = "mkdir -p " + dir_name;	// OK!
 
+
+	// Note:
+	// system("mkdir .. ") argument can contain shell variables.
+	// mkdir(" .. ") argument does not evaluate shell variables.
+
+		//	mkdir("~/xyz123", 0700);				// NG
+		//	mkdir("${HOME}/xyz123", 0700);			// NG
+		//	mkdir("/Users/mikami/xyz123", 0700);	// OK!
+
+		//	system("mkdir -p ~/xyz123");			// OK!
+		//	system("mkdir -p ${HOME}/xyz123");		// OK!
+		//	system("mkdir -p /Users/mikami/xyz123");	// OK!
+
+	#ifdef DEBUG_PRINT_MONITOR
 	if (iret == 0) {
 		fprintf(stderr, "ShellPM created directory : %s\n", dir_name.c_str());
 	} else {
-		fprintf(stderr, "directory may exist: %s \n", dir_name.c_str());
+		fprintf(stderr, "mkdir %s, returned=%d, errno=%d \n", dir_name.c_str(), iret, errno);
 	}
+	#endif
 
 	file_name = dir_name + "/" + file_name;
 
@@ -101,7 +106,7 @@ namespace pm_lib {
 	}
 	fclose(fp);
 
-	// cleaning up the garbages
+	// delete the data record
 	int iret = remove(file_name.c_str());
 	if (iret != 0) {
 		fprintf(stderr, "*** failed to remove file: %s\n", file_name.c_str());
@@ -111,14 +116,14 @@ namespace pm_lib {
 	fprintf(stderr, "ShellPM removed file: %s\n", file_name.c_str());
 	#endif
 
+
+/**
 	iret = remove(dir_name.c_str());
 	if (iret != 0) {
-		fprintf(stderr, "*** failed to remove directory: %s\n", dir_name.c_str());
+		fprintf(stderr, "*** failed to remove dir: %s\n", dir_name.c_str());
 		return;
 	}
-	#ifdef DEBUG_PRINT_MONITOR
-	fprintf(stderr, "ShellPM removed directory: %s\n", dir_name.c_str());
-	#endif
+**/
 
   }
 
@@ -151,18 +156,24 @@ namespace pm_lib {
 
   void PerfMonitor::pm_storage_dir_name(std::string& pm_dir_name)
   {
+
+	// Note:
+	// The argument to mkdir() must be a full path name.
+	// The argument to system("mkdir .. ") can contain shell variables.
+	// We compose the full path name that can be used by both system calls
+	//
+
 	char* cp_env;
 	std::string s_dirname;
 	cp_env = std::getenv("HOME");
 	if (cp_env == NULL) {
 		cp_env = std::getenv("USER");
-		//	s_dirname = "/tmp/" + cp_env;
 		s_dirname = "/tmp/" + std::string(cp_env);
     } else {
         s_dirname = cp_env;
     }
 
-    pm_dir_name = s_dirname + "/.shellpm/measured_data";
+    pm_dir_name = s_dirname + "/.shellpm_data";
 
 	#ifdef DEBUG_PRINT_MONITOR
 	fprintf(stderr, "<pm_storage_dir_name> returns: %s\n", pm_dir_name.c_str());

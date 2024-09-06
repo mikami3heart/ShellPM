@@ -37,12 +37,6 @@ set (CMAKE_INSTALL_PREFIX "${INSTALL_DIR}")
 
 
 #######
-# Policy setting
-#######
-#	cmake_policy(SET CMP0012 NEW)
-
-
-#######
 set(PROJECT_VERSION "0.1.0")
 set(LIB_REVISION "20240905_1500")
 
